@@ -1,0 +1,182 @@
+GETTING STARTED
+Shunyaya Symbolic Mathematical Network (SSM-NET)
+Version: 2.1
+Date: November 10, 2025
+Caution: Research/observation only. Not for critical decision-making.
+
+Goal
+Emit and verify SSM-NET declarations without changing existing payloads.
+Day-1: Attach declarations.
+Day-7: Publish what you promise.
+Day-30: Enforce and verify.
+
+Prerequisites
+
+Attachment point. A place to carry small metadata beside payloads (headers, trailer, sidecar, or message metadata).
+
+UTC clock for stamp.
+
+A published manifest_id defining:
+
+bands and cutpoints
+
+boundary inclusivity
+
+timing windows
+
+alignment pipeline parameters (eps_a, eps_w, weight rule w)
+
+canonical subset recipe
+
+Day-1 — Emit Minimal Declarations (Label-First)
+
+Sender MUST
+
+Preserve payload (phi((m,a)) = m).
+
+Attach the following fields (names illustrative):
+
+ssmnet-band: <label>
+ssmnet-manifest: <manifest_id>
+ssmnet-commit: sha256=<hex>
+ssmnet-stamp: SSMCLOCK1|<iso_utc>|nonce=<...>|sha256=<...>|prev=<...>
+ssmnet-align: <value in -1..+1>   // only if required by the manifest
+
+
+Compute canonical subset commitment, for example:
+
+bytes := JOIN_WITH_NEWLINES([
+    headerA,
+    headerB,
+    byte_range(payload, i:j)
+])
+sha256 := SHA256(bytes)
+
+
+Receiver SHOULD
+
+Recompute SHA256(canonical_subset) and match ssmnet-commit.
+
+Map align → band using the manifest (or verify provided band).
+
+Record the declaration envelope for replay.
+
+Day-7 — Publish What You Promise
+
+Publish the manifest and canonical subset recipe.
+
+Host a policy shelf containing versioned manifests.
+
+Begin applying the acceptance checklist on inbound traffic:
+
+align is bounded (if present).
+
+sha256 matches canonical subset commitment.
+
+band is correct under the manifest cutpoints.
+
+prev chain continuity is consistent.
+
+Disclosure mode matches the manifest.
+
+Day-30 — Enforce and Verify
+
+Apply timing windows and actions based on band.
+
+Append intermediary observation stamps when meaningful handling occurs (append-only; never rewrite).
+
+Store evidence bundles:
+
+envelopes.jsonl
+hashes.txt
+checkpoint.txt
+verify.sh
+
+
+Verification script checks:
+
+canonical subset bytes
+
+hash commitments
+
+band mapping
+
+prev continuity
+
+outputs ALL CHECKS PASSED or a structured failure reason
+
+Reference Snippets
+
+Alignment Pipeline (Deterministic & Bounded)
+
+a_c := clamp(a_raw, -1+eps_a, +1-eps_a)
+u   := atanh(a_c)
+U  += w*u ; W += w
+align := tanh(U / max(W, eps_w))
+
+
+Tolerance note: eps_a > 0 and eps_w > 0 prevent edge pathologies (e.g., atanh(±1), divide-by-zero). 
+Choose display precision appropriate to your serializer; verification binds bytes of the canonical subset, not pretty-printed numbers.
+
+Continuity Stamp (Example Shape)
+
+SSMCLOCK1|2025-11-10T10:02:11Z|nonce=9f3a..|sha256=7c4b..|prev=5a1e..
+
+
+Minimal Envelope (Illustrative)
+
+{
+  "band": "A0",
+  "manifest_id": "TRANSPORT_POSTURE.DEMO",
+  "sha256": "7c4b...e1",
+  "stamp": "SSMCLOCK1|2025-11-10T10:02:11Z|nonce=9f3a..|sha256=7c4b..|prev=5a1e.."
+}
+
+
+Troubleshooting
+
+Condition	Treatment
+sha256 mismatch	Quarantine declaration; preserve payload.
+align out of bounds	Treat lane as invalid; fallback to label-first or review.
+Unknown manifest_id	Hold until manifest is fetched.
+Broken chain (prev)	Accept payload, mark declaration non-evidential.
+
+Wire Format Guidance
+
+Use ASCII for keys.
+
+Maintain case-exact values.
+
+When needed, canonical subset bytes must be byte-accurate, not pretty-printed.
+
+Security & Clock Hygiene
+
+stamp is tamper-evident, not a substitute for channel authentication.
+
+Default UTC skew tolerance: ±120 seconds (tunable via manifest).
+
+For sensitive disclosures over HTTP-like transports, SHOULD use a secure channel.
+
+Versioning
+
+Increment manifest_id when cutpoints or disclosure rules change.
+
+Keep canonical subset recipe stable across minor revisions.
+
+If the canonical subset changes → rotate manifest.
+
+Testing Loop
+
+Generate declaration.
+
+Paste and verify (expect ALL CHECKS PASSED).
+
+Save evidence bundle.
+
+Run verify.sh.
+
+Fetch checkpoint and compare against current head.
+
+One-Line Takeaway
+The payload never changes.
+The meaning becomes verifiable.

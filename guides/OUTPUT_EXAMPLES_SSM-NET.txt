@@ -1,0 +1,30 @@
+OUTPUT EXAMPLES — Shunyaya Symbolic Mathematical Network (SSM-NET)
+Status: Public Research Release (v2.1)
+Date: November 10, 2025
+Caution: Research/observation only. Not for critical decision-making.
+
+Notes for use
+• Format: JSON Lines (.jsonl) — one declaration per line.
+• Canonical shape: { value, align?, band, manifest_id, stamp, sha256 }
+• Label-first examples omit align on purpose (policy choice).
+• Continuity: each stamp links to the prior line’s sha256 via prev=....
+• Hex values below are illustrative placeholders.
+
+OUTPUT_SSM-NET.jsonl (copy-paste)
+{"value":{"op":"GET /health","payload_len":128},"align":0.82,"band":"GREEN","manifest_id":"NET_EDGE_POLICY_v18","sha256":"8f2a1c8b6b4b0d1f2d3c4e5f6a7b8c9d00112233445566778899aabbccddeeff","stamp":"SSMCLOCK1|2025-11-08T09:30:05Z|nonce=7b2f6c2a|sha256=8f2a1c8b6b4b0d1f2d3c4e5f6a7b8c9d00112233445566778899aabbccddeeff|prev=GENESIS"}
+
+{"value":{"op":"POST /orders","payload_len":2048},"align":0.37,"band":"AMBER","manifest_id":"NET_EDGE_POLICY_v18","sha256":"2a7b3c1d4e5f60718293a4b5c6d7e8f90112a3b4c5d6e7f8091a2b3c4d5e6f70","stamp":"SSMCLOCK1|2025-11-08T09:31:12Z|nonce=5c0d8a91|sha256=2a7b3c1d4e5f60718293a4b5c6d7e8f90112a3b4c5d6e7f8091a2b3c4d5e6f70|prev=8f2a1c8b6b4b0d1f2d3c4e5f6a7b8c9d00112233445566778899aabbccddeeff"}
+
+{"value":{"op":"PUT /devices/42","payload_len":4096},"align":-0.66,"band":"HUMAN-REVIEW","manifest_id":"NET_EDGE_POLICY_v18","sha256":"c1d2e3f405162738495a6b7c8d9e0fa1b2c3d4e5f60718293a4b5c6d7e8f9011","stamp":"SSMCLOCK1|2025-11-08T09:32:48Z|nonce=1f9d0e72|sha256=c1d2e3f405162738495a6b7c8d9e0fa1b2c3d4e5f60718293a4b5c6d7e8f9011|prev=2a7b3c1d4e5f60718293a4b5c6d7e8f90112a3b4c5d6e7f8091a2b3c4d5e6f70"}
+
+{"value":{"op":"PATCH /limits","payload_len":1536},"align":-0.87,"band":"RED","manifest_id":"NET_EDGE_POLICY_v18","sha256":"0a1b2c3d4e5f60718293a4b5c6d7e8f90112a3b4c5d6e7f8091a2b3c4d5e6f71","stamp":"SSMCLOCK1|2025-11-08T09:33:20Z|nonce=b77c3a4e|sha256=0a1b2c3d4e5f60718293a4b5c6d7e8f90112a3b4c5d6e7f8091a2b3c4d5e6f71|prev=c1d2e3f405162738495a6b7c8d9e0fa1b2c3d4e5f60718293a4b5c6d7e8f9011"}
+
+{"value":{"op":"GET /metrics","payload_len":512},"band":"GREEN","manifest_id":"NET_EDGE_POLICY_v18","sha256":"f0e1d2c3b4a5968778695a4b3c2d1e0f00112233445566778899aabbccddeef1","stamp":"SSMCLOCK1|2025-11-08T09:34:02Z|nonce=9de43a10|sha256=f0e1d2c3b4a5968778695a4b3c2d1e0f00112233445566778899aabbccddeef1|prev=0a1b2c3d4e5f60718293a4b5c6d7e8f90112a3b4c5d6e7f8091a2b3c4d5e6f71"}
+
+{"value":{"op":"POST /payments","payload_len":10240,"amount_minor":4999},"align":0.12,"band":"GREEN","manifest_id":"NET_EDGE_POLICY_v18","sha256":"aa55cc33ee7799bb00dd22ff44aa66bb77889900aabbccddeeff112233445566","stamp":"SSMCLOCK1|2025-11-08T09:35:40Z|nonce=31a0cd5b|sha256=aa55cc33ee7799bb00dd22ff44aa66bb77889900aabbccddeeff112233445566|prev=f0e1d2c3b4a5968778695a4b3c2d1e0f00112233445566778899aabbccddeef1"}
+
+{"value":{"op":"DELETE /cache/segment-9","payload_len":96},"band":"AMBER","manifest_id":"NET_EDGE_POLICY_v18","sha256":"bb66dd44ff8811cc22ee33aa55bb77cc88990011aabbccddeeff001122334455","stamp":"SSMCLOCK1|2025-11-08T09:36:18Z|nonce=4b7f9a2e|sha256=bb66dd44ff8811cc22ee33aa55bb77cc88990011aabbccddeeff001122334455|prev=aa55cc33ee7799bb00dd22ff44aa66bb77889900aabbccddeeff112233445566"}
+
+{"value":{"op":"GET /audit","payload_len":320},"align":-0.31,"band":"AMBER","manifest_id":"NET_EDGE_POLICY_v18","sha256":"cc77ee55aa9922dd33ff44bb66cc88dd99aa0011bbccddeeff11223344556677","stamp":"SSMCLOCK1|2025-11-08T09:37:03Z|nonce=0c6a8d21|sha256=cc77ee55aa9922dd33ff44bb66cc88dd99aa0011bbccddeeff11223344556677|prev=bb66dd44ff8811cc22ee33aa55bb77cc88990011aabbccddeeff001122334455"}
+
+{"value":{"op":"FORWARD /payments","payload_len":10240},"band":"FORWARDED","manifest_id":"NET_INTERMEDIARY_APPEND_v18","sha256":"ddeeff00112233445566778899aabbcc00112233445566778899aabbccddeeff","stamp":"SSMCLOCK1|2025-11-08T09:37:20Z|nonce=6e1b2c3d|sha256=ddeeff00112233445566778899aabbcc00112233445566778899aabbccddeeff|prev=aa55cc33ee7799bb00dd22ff44aa66bb77889900aabbccddeeff112233445566"}

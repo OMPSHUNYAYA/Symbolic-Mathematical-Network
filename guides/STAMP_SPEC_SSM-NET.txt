@@ -1,0 +1,120 @@
+STAMP SPEC — Shunyaya Symbolic Mathematical Network (SSM-NET)
+Status: Public Research Release (v2.1)
+Date: November 10, 2025
+Caution: Research/observation only. Not for critical decision-making.
+
+Purpose
+Define a portable, tamper-evident continuity stamp for SSM-NET declarations. 
+The stamp proves when a declaration was made, what canonical subset was committed, and how this declaration links to the previous one — while keeping payload bytes unchanged (phi((m,a)) = m).
+
+One-line idea
+stamp is a tiny ASCII string that makes timelines provable without touching the payload.
+
+0. Shape (canonical string)
+SSMCLOCK1|<iso_utc>|nonce=<nonce>|sha256=<hex>|prev=<hex_or_start>
+
+SSMCLOCK1 — literal identifier (versioned clock format).
+
+iso_utc — UTC time YYYY-MM-DDThh:mm:ssZ (optionally YYYY-MM-DDThh:mm:ss.sssZ).
+
+nonce — sender-chosen ASCII token (8–64 chars) for uniqueness.
+
+sha256 — lowercase hex digest (64 hex) of the canonical subset bytes.
+
+prev — lowercase hex digest (64 hex) of the previous declaration’s canonical subset, or a start sentinel.
+
+Start sentinel (v2.1): use NONE (demo profile) or nil (strict profile). Receivers MUST case-fold and accept either per manifest policy.
+All keys (nonce=, sha256=, prev=) and separators (|) are fixed and in this order.
+
+1. Field semantics
+
+iso_utc (clock anchor). Must be UTC with trailing Z. Recommended non-decreasing per chain. Clock skew is a policy concern; the string remains verifiable.
+
+nonce (collision breaker). URL-safe ASCII [A–Z a–z 0–9 - _], unique in a rolling window (e.g., 24h). Not secret; avoid PII.
+
+sha256 (commitment). Digest over the canonical subset of this message. Always 64 lowercase hex.
+
+prev (link). Digest over the canonical subset of the previous message. For a new chain, set to start sentinel (NONE/nil) per manifest policy. Branching requires a new chain start.
+
+2. Construction (sender)
+2.1 Choose canonical subset bytes. Follow the manifest’s recipe (included fields, order, byte ranges, normalization, encoding). Example:
+bytes := JOIN_WITH_NEWLINES([fieldA, fieldB, BYTE_RANGE(payload,i:j), ...])
+sha256 := SHA256(bytes)
+
+2.2 Resolve prev. If a prior declaration exists: prev := sha256(previous_canonical_subset). Else: prev := NONE (or nil per policy).
+
+2.3 Pick nonce. Random or sequence-derived (8–64 chars). Ensure practical uniqueness.
+
+2.4 Emit stamp.
+stamp := "SSMCLOCK1|" + iso_utc + "|nonce=" + nonce + "|sha256=" + sha256 + "|prev=" + prev
+
+2.5 Attach. Place in a header or field, e.g., SSMNET-Stamp: <stamp>. Payload remains byte-exact (phi((m,a)) = m).
+
+3. Canonical subset (what is committed)
+A manifest MUST publish a canonicalization recipe, including: included fields (names, order), byte ranges, whitespace/newline rules, and encoding (UTF-8 recommended). 
+Receivers recompute SHA256(canonical_subset) and compare to sha256. Changing the recipe requires a new manifest_id.
+
+4. Verification (receiver/intermediary)
+4.1 Basic checks. Prefix SSMCLOCK1|; keys in order; iso_utc syntactically valid; sha256/prev are 64-hex (or prev is an allowed start sentinel). Case-fold hex on compare.
+4.2 Commitment check. Rebuild canonical subset per the referenced manifest_id; compute SHA256(bytes); MUST equal sha256.
+4.3 Continuity check. For messages k and k-1, verify stamp[k].prev == sha256[k-1]. Recommended monotonic time: iso_utc[k] >= iso_utc[k-1]. On failure: quarantine; do not rewrite.
+
+5. Chain rules
+
+Append-only. New stamps append; history is never rewritten.
+
+Gaps. A missing link renders the chain non-evidential from that point.
+
+Forks. Use distinct starts (prev = NONE/nil) for parallel chains.
+
+Rotation. Chains may rotate at policy events; rotations should be logged.
+
+6. Failure handling (deterministic)
+
+Bad format. Reject stamp; payload may still flow as ordinary traffic.
+
+Digest mismatch. Mark integrity failure; treat declaration as untrusted.
+
+Unknown manifest. Hold for review until the manifest is available.
+
+Broken chain. Accept payload (unchanged), but mark declaration non-evidential and stop continuity scoring.
+
+7. Security & privacy
+
+No secrets in the stamp; do not embed identifiers or PII.
+
+Bounded disclosure. Commit only the canonical subset your policy declares.
+
+Replay resilience. Commitment + continuity deters selective deletion/reordering.
+
+Clock drift. The chain stays verifiable; policy may flag excessive drift.
+
+8. Examples (illustrative)
+SSMCLOCK1|2025-11-10T10:58:12Z|nonce=9Kc2a_tQ|sha256=2f6c0e4b5b0c2d1f9f1a3c6e0e1a9b0dd3a9c5c2d2e1b4f0c9e7a8d6b3f2c1a0|prev=NONE
+SSMCLOCK1|2025-11-10T10:58:27Z|nonce=9Kc2a_tR|sha256=8b1d7f2c4a0e9e5c6d3a1b0f0e2d1c3b4a5f6e7d8c9b0a1f2e3d4c5b6a798012|prev=2f6c0e4b5b0c2d1f9f1a3c6e0e1a9b0dd3a9c5c2d2e1b4f0c9e7a8d6b3f2c1a0
+
+9. ABNF (reference)
+
+stamp   = "SSMCLOCK1" "|" iso-utc "|" "nonce=" nonce "|" "sha256=" hex64 "|" "prev=" (hex64 / "NONE" / "nil")
+iso-utc = 4DIGIT "-" 2DIGIT "-" 2DIGIT "T" 2DIGIT ":" 2DIGIT ":" 2DIGIT ["." 3DIGIT] "Z"
+nonce   = 8*64( ALPHA / DIGIT / "-" / "_" )
+hex64   = 64( DIGIT / %x61-66 ) ; 64 lowercase hex chars
+
+
+10. Conformance summary (paste-ready)
+
+Sender MUST: compute sha256 over the canonical subset; set prev to prior subset digest (or allowed start sentinel); emit SSMCLOCK1|....
+
+Receiver MUST: recompute sha256; verify prev linkage; apply manifest policy.
+
+Intermediary MUST: pass through committed bytes; MUST NOT alter stamps; MAY append its own observation stamp (append-only).
+
+Version 2.1 note
+prev start sentinel clarified (NONE for demo profile, nil for strict); key order fixed; UTF-8 and field-order requirements for canonical subset are explicit; receivers MUST case-fold hex during comparisons.
+
+Profiles & extensions (non-normative, optional)
+
+Nonce base64url option. Profiles MAY permit base64url nonces; if enabled, receivers MUST validate decoded length 8–64 chars and restrict to URL-safe characters when serialized.
+
+Auxiliary clock header (display only). A non-canonical helper header MAY be carried for UI/cross-checks, e.g., SSMNET-Aux-Clock: MONO|123456789|delta_ms=17. 
+The stamp’s iso_utc remains the sole canonical clock.
