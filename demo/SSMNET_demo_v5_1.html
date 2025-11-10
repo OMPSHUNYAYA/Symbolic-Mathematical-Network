@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSM-NET — HTTP-M one-file demo (inline ES5 v5.1, canvas-safe)</title>
+<style>
+  html,body{margin:0;background:#0b0f14;color:#e6eef7;font-family:Segoe UI,Roboto,Arial,Helvetica,sans-serif;line-height:1.45}
+  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+  h1{font-size:22px;margin:8px 0 16px 0}
+  .toprow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#101827;border:1px solid #263449;color:#b7cdf7;font-weight:700;font-size:12px}
+  .card{background:#121822;border:1px solid #1f2b3c;border-radius:12px;padding:16px;margin:16px 0}
+  .mono{font-family:Consolas,Menlo,Monaco,ui-monospace,monospace}
+  textarea, pre, input[type="text"]{background:#0f1520;color:#e6eef7;border:1px solid #263449;border-radius:10px;padding:12px;width:100%}
+  textarea{min-height:130px;resize:vertical}
+  pre{max-height:260px;overflow:auto;margin:8px 0 0 0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{appearance:none;border:0;background:#182030;color:#e6eef7;padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600;box-shadow:0 4px 0 #0a0f18}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #0a0f18;background:#0f1520}
+  .btn.small{padding:8px 10px;font-size:13px;border-radius:10px}
+  .btn.ghost{background:transparent;border:1px solid #263449}
+  .files a{display:inline-block;margin:6px 8px 0 0}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#1a2130;color:#9bb2c9;font-size:12px}
+  .muted{color:#9bb2c9}
+  .help{display:none;margin-top:10px;border:1px dashed #2a3950;border-radius:10px;padding:12px;background:#0f1520}
+  @media (max-width:560px){ .btn{padding:12px 14px;font-size:15px} textarea{min-height:110px} h1{font-size:20px} }
+  .ok{color:#9ff59f} .err{color:#ff9f9f}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toprow">
+    <h1>SSM-NET — HTTP-M one-file demo</h1>
+    <div class="badge">Shunyaya Symbolic Mathematical Network</div>
+  </div>
+
+  <div class="card">
+    <div><b>① Body (byte-exact)</b></div>
+    <textarea id="bodyInput" class="mono">&lt;h1&gt;HELLO DEMO&lt;/h1&gt;</textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="btnGenerate" class="btn" onclick="GEN()">Generate &amp; Verify</button>
+      <button id="btnChain" class="btn small" onclick="CHAIN()">Chain next packet</button>
+      <button id="btnClear" class="btn small" onclick="CLR()">CLEAR</button>
+      <button id="btnHelp" class="btn small ghost" onclick="TOGGLE_HELP()">Quick Help</button>
+      <span class="pill">payload invariance: <b>phi((m,a)) = m</b></span>
+    </div>
+    <div id="helpBox" class="help">
+      <div><b>Quick Help — What this demo shows</b></div>
+      <ul class="mono" style="margin:8px 0 0 18px">
+        <li><b>Generate &amp; Verify</b> builds headers, canonical-subset digest, and stamped continuity.</li>
+        <li><b>Chain next packet</b> emits a second packet with <code>prev</code> = prior <code>HEAD</code>.</li>
+        <li><b>Paste &amp; Verify</b> rechecks any HTTP-style snippet and shows <b>ALL CHECKS PASSED</b> on success.</li>
+        <li><b>Fetch Manifest</b> accepts a JSON <code>manifest_id</code> via URL (or data: URL) and pretty-prints it.</li>
+        <li><b>Fetch Checkpoint</b> reads <code>HEAD=&lt;64-hex&gt;</code> from URL/data:/file and compares to current head (PASS/FAIL).</li>
+        <li><b>Hash Body &amp; Compare</b> fetches URL/data:/file bytes, computes <code>sha256</code>, and compares to the packet’s <code>SSMNET-Body-Hash</code>.</li>
+        <li><b>Evidence</b> appears after generation; download 5 files and run <code>verify.sh</code> to confirm parity.</li>
+        <li><b>CLEAR</b> resets the page. Fully client-side; no dependencies. <span class="muted">Note: remote URLs may hit CORS; use data: URL or file for exact bytes.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div><b>② Response (illustrative headers)</b></div>
+    <pre id="resp" class="mono" aria-live="polite"></pre>
+  </div>
+
+  <div class="card">
+    <div><b>③ Packet generated</b></div>
+    <pre id="packet" class="mono" aria-live="polite"></pre>
+  </div>
+
+  <div class="card">
+    <div><b>④ Paste &amp; Verify</b></div>
+    <textarea id="paste" class="mono" placeholder="Paste an HTTP-style packet here…"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="btnVerify" class="btn small" onclick="VERIFY()">Verify pasted</button>
+    </div>
+    <pre id="verifyOut" class="mono"></pre>
+  </div>
+
+  <div class="card">
+    <div><b>⑤ Evidence (download minimal files)</b></div>
+    <div id="evidenceEmpty" class="muted">no files yet</div>
+    <div id="evidenceBtns" class="files row" style="display:none">
+      <a id="dlManifests" class="btn small" download="manifests.json" href="#">manifests.json</a>
+      <a id="dlEnvelopes" class="btn small" download="envelopes.jsonl" href="#">envelopes.jsonl</a>
+      <a id="dlHashes" class="btn small" download="hashes.txt" href="#">hashes.txt</a>
+      <a id="dlCheckpoint" class="btn small" download="checkpoint.txt" href="#">checkpoint.txt</a>
+      <a id="dlVerifySh" class="btn small" download="verify.sh" href="#">verify.sh</a>
+      <span class="muted">Tip: chain two packets, then download files and run <span class="mono">verify.sh</span>.</span>
+    </div>
+  </div>
+
+ <div class="card" id="fetchVerifyCard">
+  <div><b>⑥ Fetch &amp; Verify (manifest / checkpoint / body)</b></div>
+
+  <!-- Manifest -->
+  <label for="manifestUrl" class="mono" style="display:block;margin-top:8px">Manifest URL</label>
+  <div class="row" style="margin-top:6px">
+    <input id="manifestUrl" type="text" class="mono" inputmode="url" autocomplete="off"
+           placeholder="https://example/.well-known/ssmnet/manifest/TRANSPORT_POSTURE.DEMO"
+           aria-label="Manifest URL">
+    <button id="btnFetchManifest" type="button" class="btn small" onclick="FETCH_MANIFEST()" aria-live="polite">
+      Fetch Manifest
+    </button>
+  </div>
+  <pre id="fetchManifestOut" class="mono" aria-live="polite"></pre>
+
+  <!-- Checkpoint (URL or local file with HEAD=...) -->
+  <label for="checkpointUrl" class="mono" style="display:block;margin-top:12px">Checkpoint (URL or file containing <code>HEAD=...</code>)</label>
+  <div class="row" style="margin-top:6px; gap:8px; flex-wrap:wrap">
+    <input id="checkpointUrl" type="text" class="mono" inputmode="url" autocomplete="off"
+           placeholder="https://example/.well-known/ssmnet/checkpoint"
+           aria-label="Checkpoint URL">
+    <input id="checkpointFile" type="file" class="mono" style="max-width:320px" aria-label="Checkpoint file">
+    <button id="btnFetchCheckpoint" type="button" class="btn small" onclick="FETCH_CHECKPOINT()" aria-live="polite">
+      Fetch Checkpoint
+    </button>
+  </div>
+  <pre id="fetchCheckpointOut" class="mono" aria-live="polite"></pre>
+
+  <!-- Body (URL or local file) -->
+  <label for="bodyUrl" class="mono" style="display:block;margin-top:12px">Body (exact wire bytes) — URL or local file</label>
+  <div class="row" style="margin-top:6px; gap:8px; flex-wrap:wrap">
+    <input id="bodyUrl" type="text" class="mono" inputmode="url" autocomplete="off"
+           placeholder="Body URL (exact wire bytes)"
+           aria-label="Body URL (exact wire bytes)">
+    <input id="bodyFile" type="file" class="mono" style="max-width:320px" aria-label="Body file">
+    <button id="btnFetchBody" type="button" class="btn small" onclick="FETCH_BODY()" aria-live="polite">
+      Hash Body &amp; Compare
+    </button>
+    <button id="btnFetchClear" type="button" class="btn small ghost" onclick="FETCH_CLEAR()">
+      Clear Fetch Panel
+    </button>
+  </div>
+  <pre id="fetchBodyOut" class="mono" aria-live="polite"></pre>
+
+  <div class="muted mono" style="margin-top:6px">
+    Note: Remote fetches may be limited by CORS; local file inputs always work.
+    Comparison reads <code>SSMNET-Body-Hash</code> from the pasted packet when present.
+  </div>
+</div>
+
+  <div class="card">
+    <div><b>Status</b></div>
+    <pre id="status" class="mono muted">Booting…</pre>
+  </div>
+</div>
+
+<script type="text/javascript">
+(function(){
+  'use strict';
+  window.onerror=function(msg){try{var s=document.getElementById('status'); if(s){s.textContent='ERROR: '+msg;}}catch(_){}}; 
+  function $(id){return document.getElementById(id);}
+  function utf8Bytes(str){var s=unescape(encodeURIComponent(str)),a=[],i;for(i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
+  function hex(bytes){var s='',i;for(i=0;i<bytes.length;i++)s+=('00'+bytes[i].toString(16)).slice(-2);return s;}
+  function nowISO(){function p(n){return(n<10?'0':'')+n;}var d=new Date();return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+'T'+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds())+'Z';}
+
+  function sha256(bytes){
+    function b2w(b){var w=[],i;for(i=0;i<b.length*8;i+=8){w[i>>5]|=(b[i/8]&255)<<(24-i%32);}return w;}
+    function w2b(w){var b=[],i;for(i=0;i<w.length*32;i+=8){b.push((w[i>>5]>>>(24-i%32))&255);}return b;}
+    function A(x,y){var l=(x&65535)+(y&65535),m=(x>>>16)+(y>>>16)+(l>>>16);return(m<<16)|(l&65535);}
+    function S(X,n){return(X>>>n)|(X<<(32-n));} function R(X,n){return X>>>n;}
+    function Ch(x,y,z){return(x&y)^((~x)&z);} function Maj(x,y,z){return(x&y)^(x&z)^(y&z);}
+    function S0(x){return S(x,2)^S(x,13)^S(x,22);} function S1(x){return S(x,6)^S(x,11)^S(x,25);}
+    function G0(x){return S(x,7)^S(x,18)^R(x,3);} function G1(x){return S(x,17)^S(x,19)^R(x,10);}
+    var K=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298];
+    var H=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225];
+    var m=b2w(bytes),l=bytes.length*8;m[l>>5]|=128<<(24-l%32);m[((l+64>>9)<<4)+15]=l;
+    var i,j,W=[],a,b,c,d,e,f,g,h,t1,t2;
+    for(i=0;i<m.length;i+=16){a=H[0];b=H[1];c=H[2];d=H[3];e=H[4];f=H[5];g=H[6];h=H[7];
+      for(j=0;j<64;j++){W[j]=j<16?m[i+j]||0:A(A(A(G1(W[j-2]),W[j-7]),G0(W[j-15])),W[j-16]);
+        t1=A(A(A(A(h,S1(e)),Ch(e,f,g)),K[j]),W[j]);t2=A(S0(a),Maj(a,b,c));h=g;g=f;f=e;e=A(d,t1);d=c;c=b;b=a;a=A(t1,t2);}
+      H[0]=A(a,H[0]);H[1]=A(b,H[1]);H[2]=A(c,H[2]);H[3]=A(d,H[3]);H[4]=A(e,H[4]);H[5]=A(f,H[5]);H[6]=A(g,H[6]);H[7]=A(h,H[7]);}
+    return w2b(H);
+  }
+
+  var HEAD=null, envelopes=[];
+  var manifests={"TRANSPORT_POSTURE.DEMO":{"manifest_id":"TRANSPORT_POSTURE.DEMO","bands":[{"label":"A++","min":-1.00,"max":-0.80,"left_incl":true,"right_incl":true},{"label":"A0","min":-0.80,"max":+0.60,"left_incl":false,"right_incl":true},{"label":"CRITICAL","min":+0.60,"max":+1.00,"left_incl":true,"right_incl":true}],"eps_a":1e-6,"eps_w":1e-9,"weight_rule":"equal","disclosure":"value+band"}};  
+
+  function STATUS(s){var n=$('status'); if(n){ n.textContent=s; }}
+
+  function enableEvidence(){
+    if(envelopes.length===0)return;
+    $('evidenceEmpty').style.display='none'; $('evidenceBtns').style.display='flex';
+    $('dlManifests').href=URL.createObjectURL(new Blob([JSON.stringify(manifests,null,2)],{type:'application/json'}));
+    var i, envText=''; for(i=0;i<envelopes.length;i++){ envText += envelopes[i].line + '\n'; }
+    $('dlEnvelopes').href=URL.createObjectURL(new Blob([envText],{type:'text/plain'}));
+    var hashText=''; for(i=0;i<envelopes.length;i++){ hashText += envelopes[i].hash + '\n'; }
+    $('dlHashes').href=URL.createObjectURL(new Blob([hashText],{type:'text/plain'}));
+    $('dlCheckpoint').href=URL.createObjectURL(new Blob(['HEAD='+(HEAD||'')+'\n'],{type:'text/plain'}));
+    var sh='#!/usr/bin/env bash\nset -eu\nif command -v sha256sum >/dev/null 2>&1; then H=sha256sum;\nelif command -v shasum >/dev/null 2>&1; then H="shasum -a 256";\nelse echo "Need sha256sum or shasum"; exit 2; fi\n: > ._rehash.txt\nwhile IFS= read -r line; do tmp=$(mktemp); printf %s "$line" > "$tmp"; d=$($H "$tmp"|awk "{print \\$1}"); echo "$d" >> ._rehash.txt; rm "$tmp"; done < envelopes.jsonl\ndiff -q <(tr -d "\\r" < hashes.txt) <(tr -d "\\r" < ._rehash.txt) >/dev/null || { echo "Digest mismatch"; exit 3; }\nrm ._rehash.txt\necho "ALL CHECKS PASSED"\n';
+    $('dlVerifySh').href=URL.createObjectURL(new Blob([sh],{type:'text/x-shellscript'}));
+}
+
+  function subsetObj(maniId){return {"value":"HELLO DEMO","band":"A0","manifest_id":maniId};}
+
+  function MAKE(prevOverride){
+    var body=$('bodyInput').value;
+    var mani='TRANSPORT_POSTURE.DEMO';
+    var subset=subsetObj(mani);
+    var subsetStr=JSON.stringify(subset);
+    var subsetHex=hex(sha256(utf8Bytes(subsetStr)));
+    var bodyHex=hex(sha256(utf8Bytes(body)));
+    var prev=(typeof prevOverride==='string')?prevOverride:(HEAD?HEAD:"NONE");
+    var stamp='SSMCLOCK1|'+nowISO()+'|n'+Math.floor(Math.random()*1e6)+'|sha256='+subsetHex+'|prev='+prev;
+    var headers='SSMNET-Manifest: '+mani+'\nSSMNET-Disclosure: value+band\nSSMNET-Canonical-Subset: ["value","band","manifest_id"]\nSSMNET-Body-Hash: sha256='+bodyHex+'\nSSMNET-Stamp: '+stamp+'\n';
+    var resp='HTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: '+utf8Bytes(body).length+'\n\n'+headers+'Body: '+body+'\n';
+    HEAD=subsetHex; envelopes.push({line: subsetStr, hash: subsetHex}); enableEvidence();
+    return {resp:resp, head:HEAD};
+  }
+
+  window.GEN=function(){
+    var pkt=MAKE();
+    window.CURRENT_HEAD = pkt.head;
+    $('resp').textContent=pkt.resp;
+    $('packet').textContent='Packet generated. HEAD='+pkt.head+'\n';
+    $('paste').value=pkt.resp;
+    VERIFY();
+    STATUS('Generated + verified.');
+  };
+  window.CHAIN=function(){
+    var p=HEAD?HEAD:'NONE';
+    var pkt=MAKE(p);
+    window.CURRENT_HEAD = pkt.head;
+    $('resp').textContent=($('resp').textContent||'')+'\n--- chained ---\n'+pkt.resp;
+    $('packet').textContent='Packet generated. HEAD='+pkt.head+'\n';
+    STATUS('Chained.');
+  };
+  window.CLR=function(){
+    $('bodyInput').value='<h1>HELLO DEMO</h1>';
+    $('resp').textContent='';
+    $('packet').textContent='';
+    $('paste').value='';
+    $('verifyOut').textContent='';
+    HEAD=null; envelopes=[];
+    $('evidenceEmpty').style.display='block';
+    $('evidenceBtns').style.display='none';
+    $('helpBox').style.display='none';
+    window.CURRENT_HEAD = null;
+    STATUS('Cleared.');
+  };
+  window.TOGGLE_HELP=function(){
+    var box=$('helpBox');
+    var opening = (box.style.display==='none'||box.style.display==='');
+    box.style.display = opening ? 'block' : 'none';
+    if(opening){
+      $('resp').textContent='';
+      $('packet').textContent='';
+      $('verifyOut').textContent='';
+      STATUS('Quick Help opened — outputs cleared for a clean view.');
+      if(box.scrollIntoView) try{ box.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(_){}
+    }else{
+      STATUS('Quick Help hidden.');
+    }
+  };
+  window.VERIFY=function(){
+    var txt=$('paste').value; if(!txt){$('verifyOut').textContent=''; STATUS('Ready.'); return;}
+    var m=/SSMNET-Manifest:\s*([^\n]+)/.exec(txt),
+        s=/SSMNET-Canonical-Subset:\s*(\[.*\])/.exec(txt),
+        st=/SSMNET-Stamp:\s*(SSMCLOCK1\|.*)/.exec(txt),
+        b=/Body:\s*([\s\S]*?)\n(?=HTTP\/|$)/.exec(txt)||/Body:\s*([\s\S]*)$/.exec(txt);
+    if(!m){$('verifyOut').textContent='Manifest missing'; STATUS('Verify: fail (manifest)'); return;}
+    if(!s){$('verifyOut').textContent='Canonical subset missing'; STATUS('Verify: fail (subset)'); return;}
+    if(!st){$('verifyOut').textContent='Stamp missing'; STATUS('Verify: fail (stamp)'); return;}
+    var maniId=m[1].replace(/\s+$/,'');
+    var compact=JSON.stringify(subsetObj(maniId));
+    var dHex=hex(sha256(utf8Bytes(compact)));
+    window.CURRENT_HEAD = dHex;
+    var bodyHex=hex(sha256(utf8Bytes(b?b[1]:'')));
+    var sha=/sha256=([0-9a-fA-F]+)/.exec(st[1]);
+    var prev=/prev=([A-Za-z0-9]+|NONE)/.exec(st[1]);
+    var ok=sha && (sha[1].toLowerCase()===dHex.toLowerCase());
+    var out = ok ? 'ALL CHECKS PASSED\nband: A0\nmanifest: '+maniId+'\nhead: '+dHex : 'Digest mismatch';
+    if(prev){ out+='\nprev: '+prev[1]; }
+    out+='\nbody_hex: '+bodyHex;
+    $('verifyOut').textContent=out;
+  };
+
+  function xhrText(url, cb){
+    try{
+      var x=new XMLHttpRequest(); x.open('GET', url, true);
+      x.onreadystatechange=function(){ if(x.readyState===4){ cb(x.status>=200&&x.status<300, x.responseText, x.status); } };
+      x.send(null);
+    }catch(e){ cb(false, String(e), 0); }
+  }
+  function xhrBytes(url, cb){
+    try{
+      var x=new XMLHttpRequest(); x.open('GET', url, true); x.responseType='arraybuffer';
+      x.onreadystatechange=function(){ if(x.readyState===4){ cb(x.status>=200&&x.status<300, x.response, x.status); } };
+      x.send(null);
+    }catch(e){ cb(false, null, 0); }
+  }
+  function ab2bytes(ab){ var u=new Uint8Array(ab), a=[], i; for(i=0;i<u.length;i++) a.push(u[i]); return a; }
+  function hashBytes(bytes){ return hex(sha256(bytes)); }
+
+  function dataUrlText(url){
+    var m = /^data:([^;,]+)?(?:;charset=([^;,]+))?(;base64)?,(.*)$/i.exec(url);
+    if(!m) return null;
+    var isB64 = !!m[3];
+    var raw   = m[4] || '';
+    if(isB64){
+      var bin = atob(raw), i, out='';
+      for(i=0;i<bin.length;i++){ out += String.fromCharCode(bin.charCodeAt(i) & 255); }
+      return out;
+    }else{
+      try{ return decodeURIComponent(raw); }catch(_){ return raw; }
+    }
+  }
+
+  window.FETCH_MANIFEST=function(){
+    var url=$('manifestUrl').value; if(!url){$('fetchManifestOut').textContent='Enter manifest URL'; return;}
+    $('fetchManifestOut').textContent='Fetching…';
+    xhrText(url, function(ok, txt, code){
+      if(!ok){ $('fetchManifestOut').textContent='Fetch failed ('+code+'): '+txt; return; }
+      var pretty=txt, id='(unknown)';
+      try{ var j=JSON.parse(txt); id=j && j.manifest_id ? j.manifest_id : id; pretty=JSON.stringify(j,null,2); }catch(_){}
+      $('fetchManifestOut').textContent='OK manifest_id: '+id+'\n\n'+pretty;
+    });
+  };
+
+  function _parseHEAD64(txt){
+    var m = /\bHEAD=([0-9a-fA-F]{64})\b/.exec(String(txt||''));
+    return m ? m[1] : null;
+  }
+  function _getCurrentHead(){
+    if (typeof window.CURRENT_HEAD === 'string' && /^[0-9a-fA-F]{64}$/.test(window.CURRENT_HEAD)) return window.CURRENT_HEAD;
+    var s = $('status'); var t = s ? s.textContent : '';
+    var m = /(?:^|\n|\r)head:\s*([0-9a-fA-F]{64})/i.exec(String(t||''));
+    return m ? m[1] : null;
+  }
+
+  window.FETCH_CHECKPOINT=function(){
+    var url=$('checkpointUrl').value;
+    var fileEl=$('checkpointFile');
+    var file=(fileEl && fileEl.files && fileEl.files[0]) ? fileEl.files[0] : null;
+
+    function render(txt, source){
+      var fetched=_parseHEAD64(txt);
+      var lines=['Source: '+source];
+      if(fetched){
+        lines.push('OK HEAD: '+fetched.toUpperCase());
+        var cur=_getCurrentHead();
+        if(cur){
+          var pass=(String(cur).toLowerCase()===fetched.toLowerCase());
+          lines.push('Compared to current head: '+(pass?'PASS ✅':'FAIL ❌'));
+        }else{
+          lines.push('(no current chain head detected for compare)');
+        }
+      }else{
+        lines.push('ERROR: checkpoint text must contain HEAD=<64-hex>');
+      }
+      lines.push('', String(txt||''));
+      $('fetchCheckpointOut').textContent=lines.join('\n');
+    }
+
+    if(file){
+      try{
+        var fr=new FileReader();
+        fr.onload=function(){ render(String(fr.result||''),'file:'+file.name); };
+        fr.onerror=function(){ $('fetchCheckpointOut').textContent='ERROR: read failed: '+(fr.error||'unknown error'); };
+        fr.readAsText(file);
+        return;
+      }catch(e1){
+        $('fetchCheckpointOut').textContent='ERROR: file read exception: '+e1;
+        return;
+      }
+    }
+
+    if(url && url.indexOf('data:')===0){
+      var txt=dataUrlText(url);
+      if(txt===null){ $('fetchCheckpointOut').textContent='ERROR: bad data: URL'; return; }
+      render(String(txt),'data-url');
+      return;
+    }
+
+    if(url){
+      $('fetchCheckpointOut').textContent='Fetching…';
+      xhrText(url,function(ok,txt,code){
+        if(!ok){ $('fetchCheckpointOut').textContent='ERROR: fetch failed ('+code+')'; return; }
+        render(String(txt||''),url);
+      });
+      return;
+    }
+
+    $('fetchCheckpointOut').textContent='Enter checkpoint URL or choose a file (HEAD=...)';
+  };
+
+  window.FETCH_BODY=function(){
+    var url=$('bodyUrl').value, fileEl=$('bodyFile'), file=(fileEl && fileEl.files && fileEl.files[0]) ? fileEl.files[0] : null;
+    var pasted=$('paste').value||'', m=/SSMNET-Body-Hash:\s*sha256=([0-9a-fA-F]{64})/.exec(pasted);
+    var want=m?m[1].toLowerCase():null;
+
+    function show(bytes, source){
+      var got=hashBytes(bytes).toLowerCase();
+      var msg='Source: '+source+'\nsha256: '+got;
+      if(want){ msg+='\nexpected: '+want+'\n'+(got===want?'MATCH ✅' : 'MISMATCH ❌'); }
+      else{ msg+='\n(no SSMNET-Body-Hash present in pasted packet to compare)'; }
+      $('fetchBodyOut').textContent=msg;
+    }
+
+    if(file){
+      var fr=new FileReader();
+      fr.onload=function(){ show(ab2bytes(fr.result),'file:'+file.name); };
+      fr.onerror=function(){ $('fetchBodyOut').textContent='Read failed: '+(fr.error||'unknown error'); };
+      fr.readAsArrayBuffer(file);
+      return;
+    }
+
+    if(url){
+      if(url.indexOf('data:')===0){
+        var txt=dataUrlText(url);
+        if(txt===null){ $('fetchBodyOut').textContent='Bad data: URL'; return; }
+        show(utf8Bytes(txt),'url:'+url);
+        return;
+      }
+      $('fetchBodyOut').textContent='Fetching…';
+      xhrBytes(url,function(ok,ab,code){
+        if(!ok){ $('fetchBodyOut').textContent='Fetch failed ('+code+') — CORS or network error'; return; }
+        show(ab2bytes(ab),'url:'+url);
+      });
+      return;
+    }
+
+    $('fetchBodyOut').textContent='Provide a Body URL or choose a local file.';
+  };
+
+  window.FETCH_CLEAR=function(){
+    var ids=['manifestUrl','checkpointUrl','bodyUrl']; var i;
+    for(i=0;i<ids.length;i++){ var n=$(ids[i]); if(n){ n.value=''; } }
+    var files=['checkpointFile','bodyFile']; for(i=0;i<files.length;i++){ var f=$(files[i]); if(f){ try{ f.value=''; }catch(_){ } } }
+    var outs=['fetchManifestOut','fetchCheckpointOut','fetchBodyOut']; for(i=0;i<outs.length;i++){ var o=$(outs[i]); if(o){ o.textContent=''; } }
+    STATUS('Fetch panel cleared.');
+  };
+
+  function bindUI(){
+    var ids=['btnGenerate','btnChain','btnClear','btnHelp','btnVerify','btnFetchManifest','btnFetchCheckpoint','btnFetchBody','btnFetchClear'], i, n;
+    for(i=0;i<ids.length;i++){ n=$(ids[i]); if(n){ n.disabled=false; } }
+    var p=$('paste'); if(p){ p.oninput=window.VERIFY; p.onkeyup=window.VERIFY; p.onchange=window.VERIFY; }
+    STATUS('Ready.');
+  }
+  if(window.addEventListener){ window.addEventListener('load', bindUI, false); }
+  else if(window.attachEvent){ window.attachEvent('onload', bindUI); }
+  else{ setTimeout(bindUI, 0); }
+
+})(); 
+</script>
+
+<script type="text/javascript">
+(function (g) {
+  'use strict';
+  function $(id){ return g.document.getElementById(id); }
+  function bindOnce() {
+    var pairs = [
+      ['btnGenerate','GEN'],
+      ['btnChain','CHAIN'],
+      ['btnClear','CLR'],
+      ['btnHelp','TOGGLE_HELP'],
+      ['btnVerify','VERIFY'],
+      ['btnFetchManifest','FETCH_MANIFEST'],
+      ['btnFetchCheckpoint','FETCH_CHECKPOINT'],
+      ['btnFetchBody','FETCH_BODY'],
+      ['btnFetchClear','FETCH_CLEAR']
+    ];
+    var i, el, fn;
+    for (i=0;i<pairs.length;i++){
+      el = $(pairs[i][0]); fn = g[pairs[i][1]];
+      if (el && typeof fn === 'function') {
+        el.onclick = fn;
+        el.disabled = false;
+      }
+    }
+    var p = $('paste');
+    if (p && typeof g.VERIFY === 'function') {
+      p.oninput = g.VERIFY;
+      p.onkeyup  = g.VERIFY;
+      p.onchange = g.VERIFY;
+    }
+    if (typeof g.STATUS === 'function') { g.STATUS('Ready (canvas shim bound).'); }
+  }
+  if (g.addEventListener) g.addEventListener('load', bindOnce, false);
+  else if (g.attachEvent) g.attachEvent('onload', bindOnce);
+  g.setInterval(bindOnce, 600);
+})(window);
+</script>
+</body>
+</html>
