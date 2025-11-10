@@ -1,7 +1,7 @@
 # SSM-NET — Shunyaya Symbolic Mathematical Network
 *Keep your bytes; add a tiny, stamped declaration.*
 
-![License](https://img.shields.io/badge/license-Open%20Standard%20%2F%20Open%20Source-brightgreen?style=flat&logo=open-source-initiative)
+![GitHub Stars](https://img.shields.io/github/stars/OMPSHUNYAYA/Symbolic-Mathematical-Network?style=flat&logo=github) ![License](https://img.shields.io/badge/license-Open%20Standard%20%2F%20Open%20Source-brightgreen?style=flat&logo=open-source-initiative)
 
 **Executive overview**  
 SSM-NET is a small, manifest-first layer that sits beside existing traffic and turns ordinary messages into self-verifying declarations — without changing payload bytes (`phi((m,a)) = m`). It makes posture explicit (`band`), commits to a canonical subset (`sha256=<hex>`), and links events with a portable continuity stamp (`SSMCLOCK1|<iso_utc>|nonce=<...>|sha256=<...>|prev=<...>`). *Observation-only.*
