@@ -53,6 +53,14 @@ Each message links to the previous by `prev = sha256(previous_subset)`.
 
 ---
 
+## Semantic Category / Practical Scope
+
+- **Domains:** AI alignment, network observability, data provenance, governance frameworks, safety-state signaling, operational assurance.
+- **Integration surfaces:** HTTP / MQTT / Kafka / REST / streaming telemetry / embedded buses.
+- **Implementation footprint:** Python, Rust, Go, C, browser JavaScript. No protocol rewrites. No vendor lock.
+
+---
+
 ## Topics
 
 Shunyaya Symbolic Mathematical Network (SSM-NET), internet protocol overlay, canonical subset commitment, stamped continuity, manifest policy, bounded alignment, auditability, observation-only framework.
