@@ -1,0 +1,87 @@
+{
+  "manifest_id": "TRANSPORT_POSTURE.DEMO",
+  "version": "2.1",
+  "status": "public_research_release",
+  "alignment": {
+    "eps_a": 1e-06,
+    "eps_w": 1e-09,
+    "weight_rule": "equal",
+    "weight_params": {}
+  },
+  "bands": [
+    {
+      "label": "A++",
+      "range": {
+        "low": -1.0,
+        "high": -0.8,
+        "low_inclusive": true,
+        "high_inclusive": true
+      },
+      "duty": {
+        "action": "continue",
+        "window_s": 0,
+        "escalation_owner": "none"
+      }
+    },
+    {
+      "label": "A0",
+      "range": {
+        "low": -0.8,
+        "high": 0.6,
+        "low_inclusive": false,
+        "high_inclusive": true
+      },
+      "duty": {
+        "action": "observe",
+        "window_s": 0,
+        "escalation_owner": "ops"
+      }
+    },
+    {
+      "label": "CRITICAL",
+      "range": {
+        "low": 0.6,
+        "high": 1.0,
+        "low_inclusive": true,
+        "high_inclusive": true
+      },
+      "duty": {
+        "action": "block_now",
+        "window_s": 0,
+        "escalation_owner": "sre"
+      }
+    }
+  ],
+  "disclosure": {
+    "mode": "label_first",
+    "expose_align": false,
+    "expose_fields": [
+      "band",
+      "manifest_id",
+      "stamp",
+      "sha256"
+    ]
+  },
+  "canonical_subset": {
+    "fields": [
+      "value",
+      "band",
+      "manifest_id"
+    ],
+    "ordering": "exact",
+    "whitespace": "trim",
+    "newline": "LF",
+    "normalization": "none"
+  },
+  "hash": {
+    "algorithm": "sha256",
+    "body_hash_header": "SSMNET-Body-Hash"
+  },
+  "stamp_policy": {
+    "clock": "SSMCLOCK1",
+    "timezone": "UTC",
+    "include_prev": true,
+    "nonce_bytes": 16,
+    "allowed_skew_s": 2
+  }
+}
